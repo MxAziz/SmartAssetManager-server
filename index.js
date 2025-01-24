@@ -35,6 +35,14 @@ async function run() {
 
       const userCollection = client.db("samDB").collection("users");
 
+
+    // user related apis
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    })
       app.post("/users", async (req, res) => {
         const user = req.body;
         const query = { email: user.email };
@@ -42,7 +50,7 @@ async function run() {
         if (existingUser) {
           return res.send({ message: "user already exists", insertedId: null });
         }
-        const result = await userCollection.insertOne(user);
+        const result = await userCollection.insertOne({...user, timeStamp: Date.now(),});
         res.send(result);
       });
 
@@ -50,10 +58,9 @@ async function run() {
 
 
 
-
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
