@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 // const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -31,29 +32,47 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
-      );
+    );
 
-      const userCollection = client.db("samDB").collection("users");
-
+    const userCollection = client.db("samDB").collection("users");
 
     // user related apis
-    app.get('/users/:email', async (req, res) => {
+    app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const result = await userCollection.findOne(query);
       res.send(result);
-    })
-      app.post("/users", async (req, res) => {
-        const user = req.body;
-        const query = { email: user.email };
-        const existingUser = await userCollection.findOne(query);
-        if (existingUser) {
-          return res.send({ message: "user already exists", insertedId: null });
-        }
-        const result = await userCollection.insertOne({...user, timeStamp: Date.now(),});
-        res.send(result);
+    });
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
+      const result = await userCollection.insertOne({
+        ...user,
+        timeStamp: Date.now(),
+      });
+      res.send(result);
+    });
+
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, "amount inside the intent");
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
       });
 
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
 
 
