@@ -72,6 +72,15 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await productCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
+
 
 
     app.post("/create-payment-intent", async (req, res) => {
