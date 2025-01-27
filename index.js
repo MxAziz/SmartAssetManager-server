@@ -35,6 +35,8 @@ async function run() {
     );
 
     const userCollection = client.db("samDB").collection("users");
+    const paymentCollection = client.db("samDB").collection("payments");
+    const productCollection = client.db("samDB").collection("products");
 
     // user related apis
     app.get("/users/:email", async (req, res) => {
@@ -57,26 +59,49 @@ async function run() {
       res.send(result);
     });
 
-    // payment intent
-    app.post("/create-payment-intent", async (req, res) => {
-      const { price } = req.body;
-      const amount = parseInt(price * 100);
-      console.log(amount, "amount inside the intent");
 
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
+    // product related apis
+    app.post("/products", async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
     });
 
 
 
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
 
+      if (!price) {
+        return res.status(400).send({ error: "Price is required." });
+      }
+
+      const amount = price * 100; // Stripe accepts amount in cents
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        console.error("Stripe Error:", error);
+        res.status(500).send({ error: "Payment Intent Failed" });
+      }
+    });
+
+    // Save Payment Data
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+
+      try {
+        const result = await paymentCollection.insertOne(payment);
+        res.send({ paymentResult: result });
+      } catch (error) {
+        console.error("Payment Saving Error:", error);
+        res.status(500).send({ error: "Failed to Save Payment" });
+      }
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
