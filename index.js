@@ -7,7 +7,12 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+const corsOptions = {
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true,
+  optionSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 
@@ -39,6 +44,7 @@ async function run() {
     const companyCollection = client.db("samDB").collection("companies");
     const paymentCollection = client.db("samDB").collection("payments");
     const productCollection = client.db("samDB").collection("products");
+    const requestCollection = client.db("samDB").collection("requestProducts");
 
     // user related apis
 
@@ -79,7 +85,6 @@ async function run() {
       res.send(products);
     });
 
-    // TODO:
    app.get("/assets", async (req, res) => {
      try {
        const assets = await productCollection.find().toArray();
@@ -89,7 +94,104 @@ async function run() {
      }
    });
 
-   app.post("/asset-requests", async (req, res) => {
+    // app.get("/requestAsset/:email", async (req, res) => {
+    //   const { email } = req.params;
+
+    //   try {
+    //     const assets = await productCollection.find({
+    //       $or: [
+    //         { employeeEmail: email }, // Match email
+    //         { employeeEmail: { $exists: false } }, // Include missing field
+    //       ],
+    //     }).toArray();
+
+    //     if (assets.length === 0) {
+    //       return res
+    //         .status(404)
+    //         .json({ message: "No assets found for this email" });
+    //     }
+    //     res.status(200).json(assets);
+    //   } catch (error) {
+    //     res.status(500).json({ error: "Internal Server Error" });
+    //   }
+    // });
+
+    app.get("/products/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {employeeEmail: email}
+       const products = await requestCollection.find(query).toArray();
+       res.send(products);
+     });
+
+    app.get("/requestAsset/:email", async (req, res) => {
+      const { email } = req.params;
+
+      try {
+        const assets = await productCollection.aggregate([
+          {
+            $addFields: {
+              employeeEmail: { $ifNull: ["$employeeEmail", "unknown"] }, // Default value
+            },
+          },
+          {
+            $match: { employeeEmail: email },
+          },
+        ]).toArray();
+
+        res.status(200).json(assets);
+      } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+
+
+
+    // app.patch("/api/assets/:id", async (req, res) => {
+    //   const { id } = req.params;
+    //   const { status } = req.body;
+
+    //   try {
+    //     const update = { $set: { status } };
+
+    //     // Increment product quantity if returned
+    //     if (status === "Returned") {
+    //       update.$inc = { productQuantity: 1 };
+    //     }
+
+    //     const result = await productCollection.updateOne(
+    //       { _id: ObjectId(id) },
+    //       update
+    //     );
+
+    //     if (result.modifiedCount > 0) {
+    //       res
+    //         .status(200)
+    //         .json({ message: "Asset status updated successfully" });
+    //     } else {
+    //       res.status(404).json({ error: "Asset not found" });
+    //     }
+    //   } catch (error) {
+    //     console.error("Error updating asset status:", error);
+    //     res.status(500).json({ error: "Failed to update asset status" });
+    //   }
+    // });
+
+    // app.patch("/assets/:id", async (req, res) => {
+    //   const { id } = req.params;
+    //   const { status } = req.body;
+
+    //   const update = { $set: { status } };
+    //   if (status === "Returned") update.$inc = { productQuantity: 1 };
+
+    //  const result= await productCollection.updateOne({ _id: ObjectId(id) }, update);
+    //   res.send(result);
+    // });
+
+
+
+
+   app.post("/requestProducts", async (req, res) => {
      try {
        const {
          assetId,
@@ -111,7 +213,7 @@ async function run() {
          notes,
        };
 
-       const result = await productCollection.insertOne(newRequest);
+       const result = await requestCollection.insertOne(newRequest);
        res.status(201).json({ insertedId: result.insertedId });
      } catch (error) {
        res.status(500).json({ error: "Failed to submit asset request" });
@@ -131,6 +233,7 @@ async function run() {
       const result = await productCollection.deleteOne(query);
       res.send(result);
     });
+
 
     app.put("/products/:id", async (req, res) => {
       const id = req.params.id;
