@@ -35,10 +35,24 @@ async function run() {
     );
 
     const userCollection = client.db("samDB").collection("users");
+    const employeeCollection = client.db("samDB").collection("employees");
+    const companyCollection = client.db("samDB").collection("companies");
     const paymentCollection = client.db("samDB").collection("payments");
     const productCollection = client.db("samDB").collection("products");
 
     // user related apis
+
+    app.get("/users", async (req, res) => {
+      try {
+        const result = await userCollection
+          .find({ role: "employee", companyId: { $exists: false } })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch users" });
+      }
+    });
+
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -59,12 +73,14 @@ async function run() {
       res.send(result);
     });
 
-
     // product related apis
     app.get("/products", async (req, res) => {
       const products = await productCollection.find().toArray();
       res.send(products);
     });
+
+    // TODO:
+
 
     app.post("/products", async (req, res) => {
       const product = req.body;
@@ -74,7 +90,7 @@ async function run() {
 
     app.delete("/products/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const result = await productCollection.deleteOne(query);
       res.send(result);
     });
@@ -95,10 +111,6 @@ async function run() {
       const result = await productCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
-
-
-
-
 
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
