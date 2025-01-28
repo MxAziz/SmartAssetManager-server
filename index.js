@@ -80,6 +80,43 @@ async function run() {
     });
 
     // TODO:
+   app.get("/assets", async (req, res) => {
+     try {
+       const assets = await productCollection.find().toArray();
+       res.status(200).json(assets);
+     } catch (error) {
+       res.status(500).json({ error: "Failed to fetch assets" });
+     }
+   });
+
+   app.post("/asset-requests", async (req, res) => {
+     try {
+       const {
+         assetId,
+         assetName,
+         requestDate,
+         requestStatus,
+         employeeName,
+         employeeEmail,
+         notes,
+       } = req.body;
+
+       const newRequest = {
+         assetId,
+         assetName,
+         requestDate,
+         requestStatus,
+         employeeName,
+         employeeEmail,
+         notes,
+       };
+
+       const result = await productCollection.insertOne(newRequest);
+       res.status(201).json({ insertedId: result.insertedId });
+     } catch (error) {
+       res.status(500).json({ error: "Failed to submit asset request" });
+     }
+   });
 
 
     app.post("/products", async (req, res) => {
