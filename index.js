@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 // middleware
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: ["http://localhost:5173", "https://sam000.web.app"],
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -127,10 +127,10 @@ async function run() {
       const { email } = req.params;
 
       try {
-        const assets = await productCollection.aggregate([
+        const assets = await requestCollection.aggregate([
           {
             $addFields: {
-              employeeEmail: { $ifNull: ["$employeeEmail", "unknown"] }, // Default value
+              employeeEmail: { $ifNull: ["$employeeEmail", "unknown"] },
             },
           },
           {
