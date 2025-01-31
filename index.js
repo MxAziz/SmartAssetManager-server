@@ -40,13 +40,13 @@ async function run() {
     );
 
     const userCollection = client.db("samDB").collection("users");
-    const employeeCollection = client.db("samDB").collection("employees");
-    const companyCollection = client.db("samDB").collection("companies");
+    // const employeeCollection = client.db("samDB").collection("employees");
+    // const companyCollection = client.db("samDB").collection("companies");
     const paymentCollection = client.db("samDB").collection("payments");
     const productCollection = client.db("samDB").collection("products");
     const requestCollection = client.db("samDB").collection("requestProducts");
 
-    // user related apis
+    // user related apis-------------------------------------------
 
     app.get("/users", async (req, res) => {
       try {
@@ -79,20 +79,20 @@ async function run() {
       res.send(result);
     });
 
-    // product related apis
+    // product related apis-----------------------------------------------------
     app.get("/products", async (req, res) => {
       const products = await productCollection.find().toArray();
       res.send(products);
     });
 
-   app.get("/assets", async (req, res) => {
-     try {
-       const assets = await productCollection.find().toArray();
-       res.status(200).json(assets);
-     } catch (error) {
-       res.status(500).json({ error: "Failed to fetch assets" });
-     }
-   });
+    app.get("/assets", async (req, res) => {
+      try {
+        const assets = await productCollection.find().toArray();
+        res.status(200).json(assets);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch assets" });
+      }
+    });
 
     // app.get("/requestAsset/:email", async (req, res) => {
     //   const { email } = req.params;
@@ -116,36 +116,42 @@ async function run() {
     //   }
     // });
 
+    // Request Products related apis-----------------------------------------------------
+
+    // MyAsset.jsx
     app.get("/products/:email", async (req, res) => {
       const email = req.params.email;
-      const query = {employeeEmail: email}
-       const products = await requestCollection.find(query).toArray();
-       res.send(products);
-     });
+      const query = { employeeEmail: email };
+      const products = await requestCollection.find(query).toArray();
+      res.send(products);
+    });
+    app.get("/allRequestAsset", async (req, res) => {
+      const result = await requestCollection.find().toArray();
+      res.send(result);
+    });
 
     app.get("/requestAsset/:email", async (req, res) => {
       const { email } = req.params;
 
       try {
-        const assets = await requestCollection.aggregate([
-          {
-            $addFields: {
-              employeeEmail: { $ifNull: ["$employeeEmail", "unknown"] },
+        const assets = await requestCollection
+          .aggregate([
+            {
+              $addFields: {
+                employeeEmail: { $ifNull: ["$employeeEmail", "unknown"] },
+              },
             },
-          },
-          {
-            $match: { employeeEmail: email },
-          },
-        ]).toArray();
+            {
+              $match: { employeeEmail: email },
+            },
+          ])
+          .toArray();
 
         res.status(200).json(assets);
       } catch (error) {
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
-
-
-
 
     // app.patch("/api/assets/:id", async (req, res) => {
     //   const { id } = req.params;
@@ -188,38 +194,37 @@ async function run() {
     //   res.send(result);
     // });
 
+    // RequestAsset.jsx
+    app.post("/requestProducts", async (req, res) => {
+      try {
+        const {
+          assetId,
+          assetName,
+          assetType,
+          requestDate,
+          requestStatus,
+          employeeName,
+          employeeEmail,
+          notes,
+        } = req.body;
 
+        const newRequest = {
+          assetId,
+          assetName,
+          assetType,
+          requestDate,
+          requestStatus,
+          employeeName,
+          employeeEmail,
+          notes,
+        };
 
-
-   app.post("/requestProducts", async (req, res) => {
-     try {
-       const {
-         assetId,
-         assetName,
-         requestDate,
-         requestStatus,
-         employeeName,
-         employeeEmail,
-         notes,
-       } = req.body;
-
-       const newRequest = {
-         assetId,
-         assetName,
-         requestDate,
-         requestStatus,
-         employeeName,
-         employeeEmail,
-         notes,
-       };
-
-       const result = await requestCollection.insertOne(newRequest);
-       res.status(201).json({ insertedId: result.insertedId });
-     } catch (error) {
-       res.status(500).json({ error: "Failed to submit asset request" });
-     }
-   });
-
+        const result = await requestCollection.insertOne(newRequest);
+        res.status(201).json({ insertedId: result.insertedId });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to submit asset request" });
+      }
+    });
 
     app.post("/products", async (req, res) => {
       const product = req.body;
@@ -233,7 +238,6 @@ async function run() {
       const result = await productCollection.deleteOne(query);
       res.send(result);
     });
-
 
     app.put("/products/:id", async (req, res) => {
       const id = req.params.id;
@@ -252,6 +256,7 @@ async function run() {
       res.send(result);
     });
 
+    // stripe related apis -----------------------------------------------
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
 
